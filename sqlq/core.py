@@ -32,7 +32,7 @@ class SqlQueue(object):
         db.execute("PRAGMA locking_mode=NORMAL;")
         conn.close()
 
-    def __exc(self, db: sqlite3.Cursor, sql: str, data: tuple) -> list_or_tuple:
+    def __exc(self, db: sqlite3.Cursor, sql: str, data: tuple) -> Any:
         mode = ""
         try:
             if sql.endswith(";"):
@@ -59,9 +59,8 @@ class SqlQueue(object):
             return result
         except Exception as e:
             p(f"error: [{mode}] {sql}(", data, f") due to {e}")
-            info = debug_info()
-            p(info[0])
-            return info
+            p(debug_info()[0])
+            return e
 
     def commit(self):
         self.do_commit = True
@@ -105,6 +104,8 @@ class SqlQueue(object):
         threadwrapper = ThreadWrapper(threading.Semaphore(1))
         threadwrapper.add(job=job, args=args(sql, data), result=result, key=key)
         threadwrapper.wait()
+        if isinstance(result[key], Exception):
+            raise result[key]
         return result[key]
 
 
