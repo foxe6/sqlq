@@ -1,6 +1,5 @@
 import queue
 import sqlite3
-from omnitools import *
 from threadwrapper import *
 from filehandling import join_path, abs_cwd
 
