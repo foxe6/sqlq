@@ -17,11 +17,11 @@ readme = re.sub(r"(<badges>).*?(</badges>)", rf"\g<1>{badges}\g<2>", readme, fla
 open("README.md", "wb").write(readme.encode("utf-8"))
 description = re.search(r"<i>(.*?)</i>", readme)[1]
 setup(
-    name="sqlqueue",
-    version="0.0.0",
+    name="sqlq",
+    version="0.0.1",
     keywords=["sql sqlite3 queue"],
     packages=find_packages(),
-    url="https://github.com/foxe6/sqlqueue",
+    url="https://github.com/foxe6/sqlq",
     license="AGPL-3.0",
     author="f̣ộx̣ệ6",
     author_email="foxe6@protonmail.com",
