@@ -55,6 +55,10 @@ for l in r:
         tw.add(job, args=args(i))
     tw.wait()
     p(l, (time.time()-starttime)/l, time.time()-starttime)
+    # in order to use SqlQueue()._sql(), ThreadWrapper() is
+    # recommended to queue threads, check threadwrapper for more info
+    # a dict or a list can pass into the ThreadWrapper()
+    # thus SQL execution result can be returned to the main thread
 
 
     starttime = time.time()
@@ -67,15 +71,27 @@ for l in r:
         sqlqueue.sql(f"DELETE FROM test WHERE a = ?;", (str(i),))
     p(l, (time.time()-starttime)/l, time.time()-starttime)
     p()
-    sqlqueue.commit()
+    sqlqueue.commit()  # manual commit
+    # both manual and timeout commit always wait until
+    # the current SQL execution is completed. 
+    # the worker will not cause any error
+    # however SqlQueue().sql() will re-raise execution error
 
 
 # SQL execution modes
-SqlQueue().sql("SELECT * FROM table;")
-SqlQueue().sql("INSERT INTO table VALUES (?);", (0,))
-SqlQueue().sql("INSERT INTO table VALUES (?);", ((0,),(0,)))
-SqlQueue().sql('''
+# all will return the executed SQL result immediately
+SqlQueue("default", timeout_commit=1000).sql("SELECT * FROM table;")
+SqlQueue("commit per 1ms", timeout_commit=1).sql("INSERT INTO table VALUES (?);", (0,))
+SqlQueue(r"C:\somewhere\db.db").sql("INSERT INTO table VALUES (?);", ((0,),(0,)))
+SqlQueue("../../data/db.db").sql('''
 CREATE TABLE "tablea" ("a" TEXT);
 DELETE TABLE "table";
 ''')
+
+# stop the worker
+# use it at your own risk
+# otherwise data will be lost
+# always commit before stopping it
+sqlqueue.commit()
+sqlqueue.stop()
 ```
