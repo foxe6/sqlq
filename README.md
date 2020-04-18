@@ -30,54 +30,6 @@ from sqlq import *
 # specify the db file, relative or absolute path
 sqlqueue = SqlQueue(r"db.db")
 
-
-# run benchmark
-# this example shows how sqlq is used
-# SQL should not be executed frequently
-# see next example for sqlq usage
-r = (1, 5, 10, 50, 100, 200)
-r = (50,)
-for l in r:
-    tw = ThreadWrapper(threading.Semaphore(l))
-    starttime = time.time()
-    for i in range(l):
-        def job(i):
-            sqlqueue._sql(threading.get_ident(), "INSERT INTO test VALUES (?);", (str(i),))
-        tw.add(job, args=args(i))
-    tw.wait()
-    p(l, (time.time()-starttime)/l, time.time()-starttime)
-    # p(sql.sql("SELECT * FROM test;"))
-    tw = ThreadWrapper(threading.Semaphore(l))
-    starttime = time.time()
-    for i in range(l):
-        def job(i):
-            sqlqueue._sql(threading.get_ident(), f"DELETE FROM test WHERE a = ?;", (str(i),))
-        tw.add(job, args=args(i))
-    tw.wait()
-    p(l, (time.time()-starttime)/l, time.time()-starttime)
-    # in order to use SqlQueue()._sql(), ThreadWrapper() is
-    # recommended to queue threads, check threadwrapper for more info
-    # a dict or a list can pass into the ThreadWrapper()
-    # thus SQL execution result can be returned to the main thread
-
-
-    starttime = time.time()
-    for i in range(l):
-        sqlqueue.sql("INSERT INTO test VALUES (?);", (str(i),))
-    p(l, (time.time()-starttime)/l, time.time()-starttime)
-    # p(sql.sql("SELECT * FROM test;"))
-    starttime = time.time()
-    for i in range(l):
-        sqlqueue.sql(f"DELETE FROM test WHERE a = ?;", (str(i),))
-    p(l, (time.time()-starttime)/l, time.time()-starttime)
-    p()
-    sqlqueue.commit()  # manual commit
-    # both manual and timeout commit always wait until
-    # the current SQL execution is completed. 
-    # the worker will not cause any error
-    # however SqlQueue().sql() will re-raise execution error
-
-
 # SQL execution modes
 # all will return the executed SQL result immediately
 SqlQueue("default", timeout_commit=1000).sql("SELECT * FROM table;")
@@ -94,4 +46,51 @@ DELETE TABLE "table";
 # always commit before stopping it
 sqlqueue.commit()
 sqlqueue.stop()
+
+# run benchmark
+# this example shows how sqlq is used
+# SQL should not be executed frequently
+# see next example for sqlq usage
+r = (1, 5, 10, 50, 100, 200)
+r = (50,)
+for l in r:
+    tw = ThreadWrapper(threading.Semaphore(l))
+    starttime = time.time()
+    for i in range(l):
+        def job(i):
+            sqlqueue._sql(threading.get_ident(), "INSERT INTO test VALUES (?);", (str(i),))
+        tw.add(job, args=args(i))
+    tw.wait()
+    p(l, (time.time()-starttime)/l, time.time()-starttime)
+    # p(sqlqueue.sql("SELECT * FROM test;"))
+    tw = ThreadWrapper(threading.Semaphore(l))
+    starttime = time.time()
+    for i in range(l):
+        def job(i):
+            sqlqueue._sql(threading.get_ident(), f"DELETE FROM test WHERE a = ?;", (str(i),))
+        tw.add(job, args=args(i))
+    tw.wait()
+    p(l, (time.time()-starttime)/l, time.time()-starttime)
+    # in order to use SqlQueue()._sql(), ThreadWrapper() is
+    # recommended to queue threads, check threadwrapper for more info
+    # SqlQueue()._sql() will raise execution error
+    # it will only report it to the result
+    # you should handle the errors separately
+
+
+    starttime = time.time()
+    for i in range(l):
+        sqlqueue.sql("INSERT INTO test VALUES (?);", (str(i),))
+    p(l, (time.time()-starttime)/l, time.time()-starttime)
+    # p(sqlqueue.sql("SELECT * FROM test;"))
+    starttime = time.time()
+    for i in range(l):
+        sqlqueue.sql(f"DELETE FROM test WHERE a = ?;", (str(i),))
+    p(l, (time.time()-starttime)/l, time.time()-starttime)
+    p()
+    sqlqueue.commit()  # manual commit
+    # both manual and timeout commit always wait until
+    # the current SQL execution is completed. 
+    # the worker will not raise any error
+    # however SqlQueue().sql() will re-raise execution error
 ```
