@@ -28,14 +28,15 @@ sqlqueue
 from sqlq import *
 
 # specify the db file, relative or absolute path
-sqlqueue = SqlQueue(r"db.db")
+# set server=True
+sqlqueue = SqlQueue(server=True, db=r"db.db")
 
 # SQL execution modes
 # all will return the executed SQL result immediately
-SqlQueue("default", timeout_commit=1000).sql("SELECT * FROM table;")
-SqlQueue("commit per 1ms", timeout_commit=1).sql("INSERT INTO table VALUES (?);", (0,))
-SqlQueue(r"C:\somewhere\db.db").sql("INSERT INTO table VALUES (?);", ((0,),(0,)))
-SqlQueue("../../data/db.db").sql('''
+SqlQueue(server=True, db="default", timeout_commit=1000).sql("SELECT * FROM table;")
+SqlQueue(server=True, db="commit per 1ms", timeout_commit=1).sql("INSERT INTO table VALUES (?);", (0,))
+SqlQueue(server=True, db=r"C:\somewhere\db.db").sql("INSERT INTO table VALUES (?);", ((0,),(0,)))
+SqlQueue(server=True, db="../../data/db.db").sql('''
 CREATE TABLE "tablea" ("a" TEXT);
 DELETE TABLE "table";
 ''')
@@ -47,7 +48,29 @@ DELETE TABLE "table";
 sqlqueue.commit()
 sqlqueue.stop()
 
-# run benchmark
+# using sqlq with encryptedsocket
+# server
+from encryptedsocket import SS
+from easyrsa import *
+sqlqueueserver = SqlQueue(server=True, db=r"db.db")
+threading.Thread(target=SS(EasyRSA(bits=1024).gen_key_pair(), sqlqueueserver.functions).start).start()
+# client
+sqlqueue = SqlQueue()
+for i in range(10):
+    # SqlQueue._sql() must not be used in socket mode
+    sqlqueue.sql("INSERT INTO test VALUES (?);", (str(i)))
+# server
+sqlqueueserver.commit()
+sqlqueueserver.stop()
+
+# SQL execution speed
+# # server mode _sql() without built-in ThreadWrapper() handler
+# SqlQueue(server=True, ...)._sql() <
+# # server mode sql() with built-in ThreadWrapper() handler
+# SqlQueue(server=True, ...).sql() <
+# # client mode sql() with two nested ThreadWrapper() handlers
+# SqlQueue().sql()
+
 # this example shows how sqlq is used
 # SQL should not be executed frequently
 # see next example for sqlq usage
