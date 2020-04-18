@@ -3,6 +3,7 @@ import sqlite3
 from threadwrapper import *
 from filehandling import join_path, abs_cwd
 from encryptedsocket import SC
+from omnitools import args
 
 
 __ALL__ = ["SqlQueue"]

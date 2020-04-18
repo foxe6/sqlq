@@ -1,4 +1,4 @@
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __keywords__ = ["sql sqlite3 queue"]
 
 
