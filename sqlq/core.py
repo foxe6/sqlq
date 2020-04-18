@@ -79,6 +79,7 @@ class SqlQueue(object):
         self.sqlq = None
         self.sqlq_worker = None
         self.functions = None
+        self.sc = SC()
         if self.is_server:
             if not os.path.isabs(db):
                 db = join_path(abs_cwd(depth=2), db)
@@ -100,7 +101,7 @@ class SqlQueue(object):
             finally:
                 self.exc_result.pop(tid)
         else:
-            return SC().request(command="sql", data=(sql, data))
+            return self.sc.request(command="sql", data=(sql, data))
 
     def sql(self, sql: str, data: tuple = (), result: Any = None, key: Any = None) -> list:
         if result is None:
