@@ -103,7 +103,7 @@ class SqlQueue(object):
             finally:
                 self.exc_result.pop(tid)
         else:
-            return self.sc.request(command="sql", data=(sql, data))
+            return self.sc.request(command="sql", data=args(sql, data))
 
     def sql(self, sql: str, data: tuple = (), result: Any = None, key: Any = None) -> list:
         if result is None:
