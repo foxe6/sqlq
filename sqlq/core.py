@@ -79,7 +79,7 @@ class SqlQueue(object):
         self.sqlq = None
         self.sqlq_worker = None
         self.functions = None
-        self.sc = SC()
+        self.sc = None
         if self.is_server:
             if not os.path.isabs(db):
                 db = join_path(abs_cwd(depth=2), db)
@@ -89,6 +89,8 @@ class SqlQueue(object):
             self.sqlq_worker.daemon = True
             self.sqlq_worker.start()
             self.functions = dict(sql=self.sql)
+        else:
+            self.sc = SC()
 
     def _sql(self, tid: int, sql: str, data: tuple = ()) -> list:
         if self.is_server:
