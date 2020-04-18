@@ -29,7 +29,7 @@ from sqlq import *
 
 # specify the db file, relative or absolute path
 # set server=True
-sqlqueue = SqlQueue(server=True, db=r"db.db")
+sqlqueue = SqlQueue(server=True, db="db.db")
 
 # SQL execution modes
 # all will return the executed SQL result immediately
@@ -73,19 +73,21 @@ sqlqueueserver.stop()
 
 # this example shows how sqlq is used
 # SQL should not be executed frequently
-# see next example for sqlq usage
 r = (1, 5, 10, 50, 100, 200)
 r = (50,)
 for l in r:
     tw = ThreadWrapper(threading.Semaphore(l))
     starttime = time.time()
+    result = {}  # result pool
     for i in range(l):
         def job(i):
-            sqlqueue._sql(threading.get_ident(), "INSERT INTO test VALUES (?);", (str(i),))
-        tw.add(job, args=args(i))
+            # return SQL execution result to result pool
+            return sqlqueue._sql(threading.get_ident(), "INSERT INTO test VALUES (?);", (str(i),))
+        tw.add(job, args=args(i), result=result, key=i)  # pass the pool and uid in
     tw.wait()
+    # p(result)
     p(l, (time.time()-starttime)/l, time.time()-starttime)
-    # p(sqlqueue.sql("SELECT * FROM test;"))
+    p(sqlqueue.sql("SELECT * FROM test;"))
     tw = ThreadWrapper(threading.Semaphore(l))
     starttime = time.time()
     for i in range(l):
@@ -105,7 +107,7 @@ for l in r:
     for i in range(l):
         sqlqueue.sql("INSERT INTO test VALUES (?);", (str(i),))
     p(l, (time.time()-starttime)/l, time.time()-starttime)
-    # p(sqlqueue.sql("SELECT * FROM test;"))
+    p(sqlqueue.sql("SELECT * FROM test;"))
     starttime = time.time()
     for i in range(l):
         sqlqueue.sql(f"DELETE FROM test WHERE a = ?;", (str(i),))
