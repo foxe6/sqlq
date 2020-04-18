@@ -2,6 +2,7 @@ import queue
 import sqlite3
 from threadwrapper import *
 from filehandling import join_path, abs_cwd
+from encryptedsocket import SC
 
 
 __ALL__ = ["SqlQueue"]
@@ -69,28 +70,37 @@ class SqlQueue(object):
     def stop(self):
         self.terminate = True
 
-    def __init__(self, db: str, timeout_commit: int = 1000) -> None:
-        if not os.path.isabs(db):
-            db = join_path(abs_cwd(depth=2), db)
+    def __init__(self, server: bool = False, db: str = "", timeout_commit: int = 1000) -> None:
+        self.is_server = server
         self.do_commit = False
         self.terminate = False
-        self.timeout_commit = timeout_commit
         self.exc_result = {}
-        self.sqlq = queue.Queue()
-        self.sqlq_worker = threading.Thread(target=self.worker, args=(db,))
-        self.sqlq_worker.daemon = True
-        self.sqlq_worker.start()
-        self.functions = dict(sql=self.sql)
+        self.timeout_commit = None
+        self.sqlq = None
+        self.sqlq_worker = None
+        self.functions = None
+        if self.is_server:
+            if not os.path.isabs(db):
+                db = join_path(abs_cwd(depth=2), db)
+            self.timeout_commit = timeout_commit
+            self.sqlq = queue.Queue()
+            self.sqlq_worker = threading.Thread(target=self.worker, args=(db,))
+            self.sqlq_worker.daemon = True
+            self.sqlq_worker.start()
+            self.functions = dict(sql=self.sql)
 
     def _sql(self, tid: int, sql: str, data: tuple = ()) -> list:
-        self.sqlq.put([tid, sql, data])
-        while tid not in self.exc_result:
-            time.sleep(1/1000)
-            continue
-        try:
-            return self.exc_result[tid]
-        finally:
-            self.exc_result.pop(tid)
+        if self.is_server:
+            self.sqlq.put([tid, sql, data])
+            while tid not in self.exc_result:
+                time.sleep(1/1000)
+                continue
+            try:
+                return self.exc_result[tid]
+            finally:
+                self.exc_result.pop(tid)
+        else:
+            return SC().request(command="sql", data=(sql, data))
 
     def sql(self, sql: str, data: tuple = (), result: Any = None, key: Any = None) -> list:
         if result is None:
