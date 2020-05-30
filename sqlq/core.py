@@ -83,7 +83,7 @@ class SqlQueue(object):
         self.sc = None
         if self.is_server:
             if not os.path.isabs(db):
-                db = join_path(abs_main_dir(depth=2), db)
+                db = join_path(abs_main_dir(depth=3), db)
             self.timeout_commit = timeout_commit
             self.sqlq = queue.Queue()
             self.sqlq_worker = threading.Thread(target=self.worker, args=(db,))
