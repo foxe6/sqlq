@@ -1,7 +1,7 @@
 import queue
 import sqlite3
 from threadwrapper import *
-from filehandling import join_path, abs_cwd
+from filehandling import join_path, abs_main_dir
 from encryptedsocket import SC
 from omnitools import args
 
@@ -83,7 +83,7 @@ class SqlQueue(object):
         self.sc = None
         if self.is_server:
             if not os.path.isabs(db):
-                db = join_path(abs_cwd(depth=2), db)
+                db = join_path(abs_main_dir(depth=2), db)
             self.timeout_commit = timeout_commit
             self.sqlq = queue.Queue()
             self.sqlq_worker = threading.Thread(target=self.worker, args=(db,))
