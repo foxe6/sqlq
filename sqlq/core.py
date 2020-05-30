@@ -71,7 +71,7 @@ class SqlQueue(object):
     def stop(self):
         self.terminate = True
 
-    def __init__(self, server: bool = False, db: str = "", timeout_commit: int = 1000) -> None:
+    def __init__(self, server: bool = False, db: str = "", timeout_commit: int = 1000, depth: int = 2) -> None:
         self.is_server = server
         self.do_commit = False
         self.terminate = False
@@ -83,7 +83,7 @@ class SqlQueue(object):
         self.sc = None
         if self.is_server:
             if not os.path.isabs(db):
-                db = join_path(abs_main_dir(depth=3), db)
+                db = join_path(abs_main_dir(depth=int(depth)), db)
             self.timeout_commit = timeout_commit
             self.sqlq = queue.Queue()
             self.sqlq_worker = threading.Thread(target=self.worker, args=(db,))
