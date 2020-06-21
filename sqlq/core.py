@@ -3,7 +3,7 @@ import sqlite3
 from threadwrapper import *
 from filehandling import join_path, abs_main_dir
 from encryptedsocket import SC
-from omnitools import args
+from omnitools import def_template, args
 
 
 __ALL__ = ["SqlQueue"]
@@ -32,6 +32,7 @@ class SqlQueue(object):
             time.sleep(1/1000)
         db.execute("PRAGMA locking_mode=NORMAL;")
         conn.close()
+        self.worker_dead = True
 
     def __exc(self, db: sqlite3.Cursor, sql: str, data: tuple) -> Any:
         mode = ""
@@ -70,6 +71,8 @@ class SqlQueue(object):
 
     def stop(self):
         self.terminate = True
+        while not self.worker_dead:
+            time.sleep(1/1000)
 
     def __init__(self, server: bool = False, db: str = "", timeout_commit: int = 1000, depth: int = 2) -> None:
         self.is_server = server
@@ -79,6 +82,7 @@ class SqlQueue(object):
         self.timeout_commit = None
         self.sqlq = None
         self.sqlq_worker = None
+        self.worker_dead = None
         self.functions = None
         self.sc = None
         if self.is_server:
@@ -89,6 +93,7 @@ class SqlQueue(object):
             self.sqlq_worker = threading.Thread(target=self.worker, args=(db,))
             self.sqlq_worker.daemon = True
             self.sqlq_worker.start()
+            self.worker_dead = False
             self.functions = dict(sql=self.sql)
         else:
             self.sc = SC()
@@ -115,7 +120,7 @@ class SqlQueue(object):
             return self._sql(threading.get_ident(), sql, data)
 
         threadwrapper = ThreadWrapper(threading.Semaphore(1))
-        threadwrapper.add(job=job, args=args(sql, data), result=result, key=key)
+        threadwrapper.add(job=def_template(job, sql, data), result=result, key=key)
         threadwrapper.wait()
         if isinstance(result[key], Exception):
             raise result[key]
