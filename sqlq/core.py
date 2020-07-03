@@ -140,7 +140,9 @@ class SqlQueueE(SqlQueue):
             if key_pair is None:
                 key_pair = EasyRSA(bits=1024).gen_key_pair()
             self.ess = ESS(key_pair, self.functions, host, port)
-            threading.Thread(target=self.ess.start).start()
+            thread = threading.Thread(target=self.ess.start)
+            thread.daemon = True
+            thread.start()
         else:
             self.sc = ESC(host, port)
 
@@ -159,7 +161,9 @@ class SqlQueueU(SqlQueue):
         port = 39292
         if self.is_server:
             self.uss = USS(self.functions, host, port)
-            threading.Thread(target=self.uss.start).start()
+            thread = threading.Thread(target=self.uss.start)
+            thread.daemon = True
+            thread.start()
         else:
             self.sc = USC(host, port)
 
