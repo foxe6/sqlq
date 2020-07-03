@@ -134,12 +134,12 @@ class SqlQueueE(SqlQueue):
         if not os.path.isabs(db):
             db = join_path(abs_main_dir(depth=int(depth)), db)
         super().__init__(server, db, timeout_commit, depth)
-        if not self.is_server:
-            self.sc = ESC()
-        if key_pair is None:
-            key_pair = EasyRSA(bits=1024).gen_key_pair()
         host = "127.199.71.10"
         port = 39292
+        if not self.is_server:
+            self.sc = ESC(host, port)
+        if key_pair is None:
+            key_pair = EasyRSA(bits=1024).gen_key_pair()
         self.ess = ESS(key_pair, self.functions, host, port)
         threading.Thread(target=self.ess.start).start()
 
@@ -154,10 +154,10 @@ class SqlQueueU(SqlQueue):
         if not os.path.isabs(db):
             db = join_path(abs_main_dir(depth=int(depth)), db)
         super().__init__(server, db, timeout_commit, depth)
-        if not self.is_server:
-            self.sc = USC()
         host = "127.199.71.10"
         port = 39292
+        if not self.is_server:
+            self.sc = USC(host, port)
         self.uss = USS(self.functions, host, port)
         threading.Thread(target=self.uss.start).start()
 
