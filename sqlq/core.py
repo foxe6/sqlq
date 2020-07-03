@@ -2,8 +2,10 @@ import queue
 import sqlite3
 from threadwrapper import *
 from filehandling import join_path, abs_main_dir
-from encryptedsocket import SC
-from omnitools import def_template, args
+from encryptedsocket import SC as ESC, SS as ESS
+from unencryptedsocket import SC as USC, SS as USS
+from easyrsa import *
+from omnitools import def_template, args, key_pair_format
 
 
 __ALL__ = ["SqlQueue"]
@@ -95,8 +97,6 @@ class SqlQueue(object):
             self.sqlq_worker.start()
             self.worker_dead = False
             self.functions = dict(sql=self.sql)
-        else:
-            self.sc = SC()
 
     def _sql(self, tid: int, sql: str, data: tuple = ()) -> list:
         if self.is_server:
@@ -125,5 +125,44 @@ class SqlQueue(object):
         if isinstance(result[key], Exception):
             raise result[key]
         return result[key]
+
+
+class SqlQueueE(SqlQueue):
+    def __init__(self, server: bool = False, db: str = "",
+                 timeout_commit: int = 1000, depth: int = 2,
+                 key_pair: key_pair_format = None) -> None:
+        if not os.path.isabs(db):
+            db = join_path(abs_main_dir(depth=int(depth)), db)
+        super().__init__(server, db, timeout_commit, depth)
+        if not self.is_server:
+            self.sc = ESC()
+        if key_pair is None:
+            key_pair = EasyRSA(bits=1024).gen_key_pair()
+        host = "127.199.71.10"
+        port = 39292
+        self.ess = ESS(key_pair, self.functions, host, port)
+        threading.Thread(target=self.ess.start).start()
+
+    def stop(self):
+        super().stop()
+        self.ess.stop()
+
+
+class SqlQueueU(SqlQueue):
+    def __init__(self, server: bool = False, db: str = "",
+                 timeout_commit: int = 1000, depth: int = 2) -> None:
+        if not os.path.isabs(db):
+            db = join_path(abs_main_dir(depth=int(depth)), db)
+        super().__init__(server, db, timeout_commit, depth)
+        if not self.is_server:
+            self.sc = USC()
+        host = "127.199.71.10"
+        port = 39292
+        self.uss = USS(self.functions, host, port)
+        threading.Thread(target=self.uss.start).start()
+
+    def stop(self):
+        super().stop()
+        self.uss.stop()
 
 
