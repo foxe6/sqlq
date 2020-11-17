@@ -43,6 +43,8 @@ class SqlQueue(object):
                 sql = sql[:-1]
             mode = ""
             if len(data) != 0:
+                if isinstance(data[0], list):
+                    data = tuple([tuple(_) for _ in data])
                 if isinstance(data[0], tuple):
                     mode = "many"
                 else:
