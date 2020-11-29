@@ -69,6 +69,7 @@ class SqlQueue(object):
             return e
 
     def commit(self):
+        # To-do: client not working
         self.do_commit = True
         while self.do_commit:
             time.sleep(1/1000)
@@ -141,7 +142,7 @@ class SqlQueueE(SqlQueue):
         if self.is_server:
             if key_pair is None:
                 key_pair = EasyRSA(bits=1024).gen_key_pair()
-            self.ess = ESS(key_pair, self.functions, host, port)
+            self.ess = ESS(key_pair, self.functions, host, port, True)
             thread = threading.Thread(target=self.ess.start)
             thread.daemon = True
             thread.start()
@@ -162,7 +163,7 @@ class SqlQueueU(SqlQueue):
         host = "127.199.71.10"
         port = 39292
         if self.is_server:
-            self.uss = USS(self.functions, host, port)
+            self.uss = USS(self.functions, host, port, True)
             thread = threading.Thread(target=self.uss.start)
             thread.daemon = True
             thread.start()
