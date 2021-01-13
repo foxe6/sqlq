@@ -12,28 +12,56 @@ __ALL__ = ["SqlQueue"]
 
 
 class SqlQueue(object):
-    def worker(self, db) -> None:
-        conn = sqlite3.connect(db)
-        conn.row_factory = sqlite3.Row
-        db = conn.cursor()
-        db.execute("PRAGMA locking_mode=EXCLUSIVE;")
-        timeout = 0
+    def worker(self, _db) -> None:
+        def connect_db(db):
+            conn = sqlite3.connect(db)
+            conn.row_factory = sqlite3.Row
+            db = conn.cursor()
+            db.execute("PRAGMA locking_mode=EXCLUSIVE;")
+            return conn, db
+        def disconnect_db(conn, db):
+            db.execute("PRAGMA locking_mode=NORMAL;")
+            conn.commit()
+            conn.close()
+        def backup():
+            import shutil
+            shutil.copy(_db, os.path.join(os.path.dirname(_db), os.path.basename(_db)+".{}.db".format(int(time.time()*1000))))
+        def do_backup(conn, db):
+            disconnect_db(conn, db)
+            backup()
+            self.do_backup = False
+            return connect_db(_db)
+        timeout_commit = 0
+        timeout_backup = 0
+        if self.auto_backup:
+            backup()
+        conn, db = connect_db(_db)
         while not self.terminate:
-            if self.sqlq.qsize() > 0 and not self.do_commit:
+            if self.do_commit:
+                conn.commit()
+                self.do_commit = False
+            elif self.do_backup:
+                conn, db = do_backup(conn, db)
+            elif self.sqlq.qsize() > 0:
                 tid, sql, data = self.sqlq.get()
                 self.exc_result[tid] = self.__exc(db, sql, data)
                 self.sqlq.task_done()
-                timeout = 0
+                timeout_commit = 0
             else:
-                if (timeout > self.timeout_commit or self.do_commit) and len(self.exc_result) == 0:
+                if (timeout_commit > self.timeout_commit) and len(self.exc_result) == 0:
                     conn.commit()
-                    self.do_commit = False
-                    timeout = 0
+                    timeout_commit = 0
                 else:
-                    timeout += 1
+                    timeout_commit += 1
+                if self.auto_backup and (timeout_backup > self.timeout_backup) and len(self.exc_result) == 0:
+                    conn, db = do_backup(conn, db)
+                    timeout_backup = 0
+                else:
+                    timeout_backup += 1
             time.sleep(1/1000)
-        db.execute("PRAGMA locking_mode=NORMAL;")
-        conn.close()
+        disconnect_db(conn, db)
+        if self.auto_backup:
+            backup()
         self.worker_dead = True
 
     def __exc(self, db: sqlite3.Cursor, sql: str, data: tuple) -> Any:
@@ -68,6 +96,12 @@ class SqlQueue(object):
             p(debug_info()[0])
             return e
 
+    def backup(self):
+        # To-do: client not working
+        self.do_backup = True
+        while self.do_backup:
+            time.sleep(1/1000)
+
     def commit(self):
         # To-do: client not working
         self.do_commit = True
@@ -79,12 +113,15 @@ class SqlQueue(object):
         while not self.worker_dead:
             time.sleep(1/1000)
 
-    def __init__(self, server: bool = False, db: str = "", timeout_commit: int = 1000, depth: int = 2) -> None:
+    def __init__(self, server: bool = False, db: str = "", timeout_commit: int = 60*1000, auto_backup: bool = False, timeout_backup: int = 60*1000, depth: int = 2) -> None:
         self.is_server = server
         self.do_commit = False
+        self.do_backup = False
         self.terminate = False
         self.exc_result = {}
         self.timeout_commit = None
+        self.auto_backup = None
+        self.timeout_backup = None
         self.sqlq = None
         self.sqlq_worker = None
         self.worker_dead = None
@@ -93,7 +130,9 @@ class SqlQueue(object):
         if self.is_server:
             if not os.path.isabs(db):
                 db = join_path(abs_main_dir(depth=int(depth)), db)
-            self.timeout_commit = timeout_commit
+            self.timeout_commit = timeout_commit/20
+            self.auto_backup = auto_backup
+            self.timeout_backup = timeout_backup/20
             self.sqlq = queue.Queue()
             self.sqlq_worker = threading.Thread(target=self.worker, args=(db,))
             self.sqlq_worker.daemon = True
@@ -131,12 +170,11 @@ class SqlQueue(object):
 
 
 class SqlQueueE(SqlQueue):
-    def __init__(self, server: bool = False, db: str = "",
-                 timeout_commit: int = 1000, depth: int = 2,
-                 key_pair: key_pair_format = None) -> None:
-        if not os.path.isabs(db):
-            db = join_path(abs_main_dir(depth=int(depth)), db)
-        super().__init__(server, db, timeout_commit, depth)
+    def __init__(self, key_pair: key_pair_format = None, **kwargs) -> None:
+        if "db" in kwargs:
+            if not os.path.isabs(kwargs["db"]):
+                kwargs["db"] = join_path(abs_main_dir(depth=int(kwargs["depth"])), kwargs["db"])
+        super().__init__(**kwargs)
         host = "127.199.71.10"
         port = 39292
         if self.is_server:
@@ -155,11 +193,11 @@ class SqlQueueE(SqlQueue):
 
 
 class SqlQueueU(SqlQueue):
-    def __init__(self, server: bool = False, db: str = "",
-                 timeout_commit: int = 1000, depth: int = 2) -> None:
-        if not os.path.isabs(db):
-            db = join_path(abs_main_dir(depth=int(depth)), db)
-        super().__init__(server, db, timeout_commit, depth)
+    def __init__(self, **kwargs) -> None:
+        if "db" in kwargs:
+            if not os.path.isabs(kwargs["db"]):
+                kwargs["db"] = join_path(abs_main_dir(depth=int(kwargs["depth"])), kwargs["db"])
+        super().__init__(**kwargs)
         host = "127.199.71.10"
         port = 39292
         if self.is_server:

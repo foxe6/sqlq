@@ -18,11 +18,11 @@ open("README.md", "wb").write(readme.encode("utf-8"))
 description = re.search(r"<i>(.*?)</i>", readme)[1]
 setup(
     name="sqlq",
-    version="0.8.0",
+    version="0.9.0",
     keywords=["sql sqlite3 queue"],
     packages=find_packages(),
-    package_data = {
-        '': ['*.ttc'],
+    package_data={
+        "": ["*.ttc"],
     },
     url="https://github.com/foxe6/sqlq",
     license="AGPL-3.0",
