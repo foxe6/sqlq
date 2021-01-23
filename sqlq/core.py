@@ -176,7 +176,7 @@ class SqlQueueE(SqlQueue):
                 kwargs["db"] = join_path(abs_main_dir(depth=int(kwargs["depth"])), kwargs["db"])
         super().__init__(**kwargs)
         host = "127.199.71.10"
-        port = 39292
+        port = 39292 if "db_port" not in kwargs else kwargs["db_port"]
         if self.is_server:
             if key_pair is None:
                 key_pair = EasyRSA(bits=1024).gen_key_pair()
@@ -199,7 +199,7 @@ class SqlQueueU(SqlQueue):
                 kwargs["db"] = join_path(abs_main_dir(depth=int(kwargs["depth"])), kwargs["db"])
         super().__init__(**kwargs)
         host = "127.199.71.10"
-        port = 39292
+        port = 39292 if "db_port" not in kwargs else kwargs["db_port"]
         if self.is_server:
             self.uss = USS(self.functions, host, port, True)
             thread = threading.Thread(target=self.uss.start)
